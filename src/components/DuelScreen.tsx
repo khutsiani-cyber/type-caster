@@ -17,6 +17,11 @@ import { TypingPanel } from './TypingPanel';
 
 const DUEL_URL =
   (import.meta.env.VITE_DUEL_SERVER as string | undefined) ?? `ws://localhost:${DUEL_PORT}`;
+// Same server over plain HTTP — used to nudge free-tier hosting awake.
+const HEALTH_URL = DUEL_URL.replace(/^ws/, 'http');
+const IS_LOCAL_SERVER = DUEL_URL.includes('localhost');
+const MAX_CONNECT_ATTEMPTS = 14;
+const RETRY_DELAY_MS = 5000;
 
 type Phase = 'menu' | 'waiting' | 'fight' | 'end';
 
@@ -46,6 +51,7 @@ export function DuelScreen() {
 
   const [phase, setPhase] = useState<Phase>('menu');
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState('');
   const [foe, setFoe] = useState<{ name: string; classId: ClassId } | null>(null);
@@ -169,28 +175,88 @@ export function DuelScreen() {
     [addFloat, nextIncantation],
   );
 
+  // Free hosting naps when idle; connecting can need several retries while it
+  // boots. We keep the intent (create/join) and retry until it answers.
+  const pendingRef = useRef<ClientMsg | null>(null);
+  const attemptRef = useRef(0);
+  const retryTimer = useRef(0);
+
+  const tryConnect = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    const attempt = attemptRef.current;
+    setError(null);
+    setStatus(
+      attempt === 0
+        ? 'Connecting…'
+        : `Waking the duel server — it naps when nobody is fighting. Attempt ${attempt + 1}/${MAX_CONNECT_ATTEMPTS}, hold on…`,
+    );
+    // HTTP nudge helps the host start booting even if the socket is refused.
+    if (!IS_LOCAL_SERVER) fetch(HEALTH_URL, { mode: 'no-cors' }).catch(() => {});
+
+    const ws = new WebSocket(DUEL_URL);
+    wsRef.current = ws;
+    let opened = false;
+    ws.onopen = () => {
+      opened = true;
+      setStatus(null);
+      const msg = pendingRef.current;
+      if (msg) ws.send(JSON.stringify(msg));
+    };
+    ws.onmessage = (ev) => {
+      try {
+        handleServer(JSON.parse(String(ev.data)) as ServerMsg);
+      } catch {
+        /* ignore malformed */
+      }
+    };
+    ws.onclose = () => {
+      if (opened || !pendingRef.current) return; // normal close or cancelled
+      attemptRef.current += 1;
+      if (attemptRef.current < MAX_CONNECT_ATTEMPTS) {
+        retryTimer.current = window.setTimeout(tryConnect, RETRY_DELAY_MS);
+      } else {
+        setStatus(null);
+        setError(
+          IS_LOCAL_SERVER
+            ? `Can't reach the duel server at ${DUEL_URL}. Start it with: npm run duel-server`
+            : "The duel server isn't answering. Give it a minute and try again.",
+        );
+        pendingRef.current = null;
+      }
+    };
+  }, [handleServer]);
+
   const connect = useCallback(
-    (onOpen: () => void) => {
-      setError(null);
-      const ws = new WebSocket(DUEL_URL);
-      wsRef.current = ws;
-      ws.onopen = onOpen;
-      ws.onmessage = (ev) => {
-        try {
-          handleServer(JSON.parse(String(ev.data)) as ServerMsg);
-        } catch {
-          /* ignore malformed */
-        }
-      };
-      ws.onerror = () => {
-        setError(`Can't reach the duel server at ${DUEL_URL}. Start it with: npm run duel-server`);
-        setPhase('menu');
-      };
+    (msg: ClientMsg) => {
+      pendingRef.current = msg;
+      attemptRef.current = 0;
+      clearTimeout(retryTimer.current);
+      tryConnect();
     },
-    [handleServer],
+    [tryConnect],
   );
 
-  useEffect(() => () => wsRef.current?.close(), []);
+  const cancelConnect = useCallback(() => {
+    pendingRef.current = null;
+    clearTimeout(retryTimer.current);
+    setStatus(null);
+    wsRef.current?.close();
+  }, []);
+
+  // Pre-warm the host the moment the duel screen opens, so the server is
+  // usually awake by the time someone clicks Create/Join.
+  useEffect(() => {
+    if (!IS_LOCAL_SERVER) fetch(HEALTH_URL, { mode: 'no-cors' }).catch(() => {});
+  }, []);
+
+  useEffect(
+    () => () => {
+      clearTimeout(retryTimer.current);
+      wsRef.current?.close();
+    },
+    [],
+  );
 
   // ---------- typing (no pressures in duels — pure speed) ----------
 
@@ -271,28 +337,39 @@ export function DuelScreen() {
         {error && <p className="duel-error">{error}</p>}
         {phase === 'menu' ? (
           <div className="duel-menu">
-            <button
-              className="primary-btn"
-              onClick={() => connect(() => sendMsg({ t: 'create', name: profile.name, classId: profile.classId }))}
-            >
-              Create Duel
-            </button>
-            <div className="duel-join">
-              <input
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="CODE"
-                maxLength={4}
-                spellCheck={false}
-              />
-              <button
-                className="primary-btn"
-                disabled={joinCode.length !== 4}
-                onClick={() => connect(() => sendMsg({ t: 'join', code: joinCode, name: profile.name, classId: profile.classId }))}
-              >
-                Join
-              </button>
-            </div>
+            {status ? (
+              <>
+                <p className="duel-status">{status}</p>
+                <button className="skip-btn" onClick={cancelConnect}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="primary-btn"
+                  onClick={() => connect({ t: 'create', name: profile.name, classId: profile.classId })}
+                >
+                  Create Duel
+                </button>
+                <div className="duel-join">
+                  <input
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    placeholder="CODE"
+                    maxLength={4}
+                    spellCheck={false}
+                  />
+                  <button
+                    className="primary-btn"
+                    disabled={joinCode.length !== 4}
+                    onClick={() => connect({ t: 'join', code: joinCode, name: profile.name, classId: profile.classId })}
+                  >
+                    Join
+                  </button>
+                </div>
+              </>
+            )}
             <button className="skip-btn" onClick={goHome}>
               Back
             </button>

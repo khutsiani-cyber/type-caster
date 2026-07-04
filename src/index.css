@@ -836,6 +836,16 @@ h3 {
   color: var(--danger);
   max-width: 480px;
 }
+.duel-status {
+  color: var(--gold);
+  max-width: 440px;
+  line-height: 1.5;
+  animation: pulse-status 1.6s ease-in-out infinite;
+}
+@keyframes pulse-status {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
 .duel-menu {
   display: flex;
   flex-direction: column;

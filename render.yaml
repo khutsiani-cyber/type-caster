@@ -1,0 +1,9 @@
+# Render blueprint: hosts the PvP duel WebSocket server on the free tier.
+# The static game itself is deployed to Netlify, not here.
+services:
+  - type: web
+    name: type-caster-duel
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run duel-server

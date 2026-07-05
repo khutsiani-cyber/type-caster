@@ -16,6 +16,7 @@ import { vfx } from '../vfx/vfx';
 import { sfx } from '../sfx/sfx';
 import { VfxCanvas } from '../vfx/VfxCanvas';
 import { TypingPanel } from './TypingPanel';
+import { TouchTyping, IS_TOUCH } from './TouchTyping';
 
 const COMBO_STEP = 0.08;
 const COMBO_CAP = 0.4;
@@ -525,6 +526,12 @@ export function BattleScreen() {
         />
       )}
       {phase !== 'fight' && <div className="typing-panel placeholder" />}
+      {IS_TOUCH && cast && phase === 'fight' && (
+        <button className="mobile-skip" onClick={skipIncantation}>
+          ↷ Skip incantation
+        </button>
+      )}
+      <TouchTyping active={phase === 'fight'} />
     </div>
   );
 }

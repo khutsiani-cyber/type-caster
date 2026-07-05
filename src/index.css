@@ -892,6 +892,137 @@ h3 {
   padding: 1.4rem 0;
 }
 
+/* ================= mobile / touch ================= */
+
+/* Invisible input that summons the phone keyboard. Must stay focusable
+   (no display:none) and >=16px font so iOS doesn't zoom on focus. */
+.touch-catcher {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font-size: 16px;
+  caret-color: transparent;
+  z-index: 50;
+}
+.mobile-skip {
+  display: block;
+  margin: 0.6rem auto 0;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 8px;
+  padding: 0.5em 1.4em;
+  font-size: 0.9rem;
+}
+.mobile-skip:active {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .home-root {
+    padding: 2vh 0.8rem 3rem;
+  }
+  .game-title {
+    font-size: 2.1rem;
+  }
+  .class-card {
+    width: 100%;
+    max-width: 320px;
+  }
+  .spell-grid {
+    grid-template-columns: 1fr;
+  }
+  .upgrade-card {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .battle-root {
+    padding: 0.4rem 0.4rem 0.8rem;
+  }
+  .battle-hud {
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.2rem 0.5rem;
+  }
+  .wave-badge {
+    font-size: 0.95rem;
+  }
+  .battle-arena {
+    padding: 0.7rem 0.5rem;
+    min-height: 230px;
+    gap: 0.4rem;
+    align-items: flex-start;
+  }
+  .fighter {
+    width: 48%;
+    gap: 0.45rem;
+  }
+  .portrait {
+    width: 92px;
+    height: 92px;
+    border-radius: 12px;
+  }
+  .fighter-info {
+    padding: 0.4rem 0.5rem;
+    gap: 4px;
+  }
+  .fighter-name {
+    font-size: 0.78rem;
+  }
+  .fighter-title {
+    display: none;
+  }
+  .battle-banner {
+    font-size: 1.25rem;
+    top: 30%;
+  }
+  .float-num {
+    font-size: 1.2rem;
+  }
+  .float-num.crit {
+    font-size: 1.7rem;
+  }
+  .typing-panel {
+    padding: 0.7rem 0.8rem 0.6rem;
+    min-height: 0;
+    margin-top: 0.6rem;
+  }
+  .incantation {
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+  .typing-head {
+    font-size: 0.78rem;
+    gap: 8px;
+  }
+  .typing-foot {
+    font-size: 0.68rem;
+  }
+  .death-card {
+    padding: 1.4rem 1.2rem;
+  }
+  .death-stats {
+    gap: 1.4rem;
+  }
+  .duel-code {
+    font-size: 2rem;
+  }
+  .records-table th,
+  .records-table td {
+    padding: 0.4rem 0.45rem;
+    font-size: 0.78rem;
+  }
+}
+
 /* ================= death ================= */
 
 .death-root {

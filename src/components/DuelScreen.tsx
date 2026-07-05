@@ -14,6 +14,7 @@ import { vfx } from '../vfx/vfx';
 import { sfx } from '../sfx/sfx';
 import { VfxCanvas } from '../vfx/VfxCanvas';
 import { TypingPanel } from './TypingPanel';
+import { TouchTyping } from './TouchTyping';
 
 const DUEL_URL =
   (import.meta.env.VITE_DUEL_SERVER as string | undefined) ?? `ws://localhost:${DUEL_PORT}`;
@@ -468,6 +469,7 @@ export function DuelScreen() {
           </button>
         </div>
       )}
+      <TouchTyping active={phase === 'fight'} />
     </div>
   );
 }
